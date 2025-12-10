@@ -1,0 +1,13 @@
+chromadb
+unstructured
+langchain==0.2.6
+langchain-core==0.2.38
+langchain-community==0.2.6
+langchain-ollama
+fastapi
+uvicorn[standard]
+python-multipart
+PyPDF2
+tiktoken
+streamlit
+langchain-ollama

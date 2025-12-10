@@ -1,0 +1,4 @@
+chunks/
+vectordb/
+data/
+__pycache__/
