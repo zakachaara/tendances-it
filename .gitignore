@@ -2,3 +2,4 @@ chunks/
 vectordb/
 data/
 __pycache__/
+.venv/
