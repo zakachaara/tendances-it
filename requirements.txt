@@ -1,13 +1,16 @@
+# Core packages
+langchain
 chromadb
 unstructured
-langchain==0.2.6
-langchain-core==0.2.38
-langchain-community==0.2.6
-langchain-ollama
 fastapi
 uvicorn[standard]
+
+# PDF and text processing
 python-multipart
 PyPDF2
 tiktoken
 streamlit
+
+# Ollama integration
 langchain-ollama
+
