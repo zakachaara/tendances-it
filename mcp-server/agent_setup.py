@@ -4,76 +4,126 @@ from langchain_ollama import OllamaLLM
 from langchain_classic.agents import create_react_agent, AgentExecutor
 from langchain_classic.prompts import PromptTemplate
 import time
+from langchain_classic.tools import Tool
+import json
+
+# Global storage for tool calls
+TOOL_CALLS_HISTORY = []
+
+def track_tool_call(tool_name, tool_input, tool_output):
+    """Simple function to track tool calls"""
+    call_data = {
+        'tool': tool_name,
+        'input': tool_input,
+        'output': str(tool_output)[:1000],  # Limit output length
+        'timestamp': time.time()
+    }
+    TOOL_CALLS_HISTORY.append(call_data)
+    print(f"🔧 Tool used: {tool_name} with input: {tool_input}")
+    return call_data
+
+def get_tool_calls():
+    """Get all tool calls"""
+    return TOOL_CALLS_HISTORY.copy()
+
+def clear_tool_calls():
+    """Clear tool call history"""
+    TOOL_CALLS_HISTORY.clear()
 
 async def setup_agent():
     print("🔗 Setting up MCP connections (async)...")
     
-    # 1. Setup MultiServerMCPClient with CORRECT configuration
+    # 1. Setup MultiServerMCPClient
+    tools = []
     try:
-        # Create connections dictionary with TRANSPORT key (required!)
         connections = {
-            "budget": {
-                "transport": "sse",  # ← REQUIRED KEY
-                "url": "http://localhost:3333/sse"
-            },
-            "destination": {
-                "transport": "sse",
-                "url": "http://localhost:3334/sse"
-            },
-            "weather": {
-                "transport": "sse", 
-                "url": "http://localhost:3335/sse"
-            },
-            "currency": {
-                "transport": "sse",
-                "url": "http://localhost:3336/sse"
-            },
-            "calculator": {
-                "transport": "sse",
-                "url": "http://localhost:3337/sse"
-            }
+            "budget": {"transport": "sse", "url": "http://localhost:3333/sse"},
+            "destination": {"transport": "sse", "url": "http://localhost:3334/sse"},
+            "weather": {"transport": "sse", "url": "http://localhost:3335/sse"},
+            "currency": {"transport": "sse", "url": "http://localhost:3336/sse"},
+            "calculator": {"transport": "sse", "url": "http://localhost:3337/sse"}
         }
         
-        print(f"✅ Configuring {len(connections)} connections with transport='sse'")
+        print(f"✅ Configuring {len(connections)} connections")
         
-        # Create client
         client = MultiServerMCPClient(connections=connections)
         print("✅ MultiServerMCPClient created")
         
-        # Get tools ASYNC
-        tools = await client.get_tools()
-        print(f"📊 Successfully loaded {len(tools)} tools")
+        # Get tools asynchronously
+        raw_tools = await client.get_tools()
+        print(f"📊 Successfully loaded {len(raw_tools)} raw tools")
         
-        # List all tools
-        for i, tool in enumerate(tools):
-            print(f"  {i+1}. {tool.name}: {tool.description[:60]}...")
+        # Convert async tools to sync tools with tracking
+        for tool in raw_tools:
+            # Create a sync wrapper that tracks calls
+            def create_tool_wrapper(tool_obj):
+                def sync_wrapper(**kwargs):
+                    try:
+                        # Try to call the tool synchronously
+                        result = tool_obj.run(kwargs)
+                        track_tool_call(tool_obj.name, kwargs, result)
+                        return result
+                    except Exception as e:
+                        # If sync fails, try async
+                        try:
+                            result = asyncio.run(tool_obj.arun(kwargs))
+                            track_tool_call(tool_obj.name, kwargs, result)
+                            return result
+                        except Exception as e2:
+                            error_msg = f"Tool error: {str(e2)}"
+                            track_tool_call(tool_obj.name, kwargs, error_msg)
+                            return error_msg
+                return sync_wrapper
+            
+            # Create the wrapped tool
+            wrapped_tool = Tool(
+                name=tool.name,
+                func=create_tool_wrapper(tool),
+                description=tool.description
+            )
+            tools.append(wrapped_tool)
+            print(f"  📦 {tool.name}: {tool.description[:60]}...")
             
     except Exception as e:
         print(f"❌ MCP setup failed: {e}")
         
-        # Fallback to mock tools
-        from langchain.tools import Tool
-        tools = []
+        # Fallback to simple mock tools
+        print("⚠️ Creating mock tools...")
         
-        mock_config = [
-            ("budget_calculator", "Calculate travel budget"),
-            ("destination_finder", "Find travel destinations"),
-            ("weather_checker", "Check weather forecast"),
-            ("currency_converter", "Convert currencies"),
-            ("basic_calculator", "Perform calculations")
+        mock_tools_data = [
+            ("estimate_budget", "Calculate travel budget based on destination and days"),
+            ("search_destination", "Find tourist attractions and activities"),
+            ("get_weather_forecast", "Get weather conditions for travel dates"),
+            ("convert_currency", "Convert between different currencies"),
+            ("calculate", "Perform mathematical calculations")
         ]
         
-        for name, desc in mock_config:
-            def create_func(tool_name, tool_desc):
-                return lambda **kwargs: f"[{tool_name}] Called with: {kwargs}"
+        for name, desc in mock_tools_data:
+            def create_mock_func(tool_name=name, tool_desc=desc):
+                def mock_func(**kwargs):
+                    # Simulate different responses based on tool
+                    if "budget" in tool_name:
+                        result = f"Estimated budget: ${kwargs.get('days', 5) * 200} USD"
+                    elif "destination" in tool_name:
+                        result = f"Attractions: Main square, Museum, Local park"
+                    elif "weather" in tool_name:
+                        result = "Weather: Sunny, 25°C, perfect for travel"
+                    elif "currency" in tool_name:
+                        result = f"Converted: ${kwargs.get('amount', 100)} USD = €{kwargs.get('amount', 100) * 0.92}"
+                    else:
+                        result = f"Calculation result: {kwargs}"
+                    
+                    track_tool_call(tool_name, kwargs, result)
+                    return result
+                return mock_func
             
             tools.append(Tool(
                 name=name,
-                func=create_func(name, desc),
+                func=create_mock_func(),
                 description=desc
             ))
         
-        print(f"⚠️  Using {len(tools)} mock tools")
+        print(f"✅ Created {len(tools)} mock tools")
     
     # 2. Initialize Ollama
     print("\n🚀 Initializing Ollama...")
@@ -92,41 +142,49 @@ async def setup_agent():
     # 3. Create agent with CORRECT prompt template
     if tools and llm:
         try:
-        # CORRECT PromptTemplate with ALL required variables
-            prompt = PromptTemplate(
-                input_variables=["input", "agent_scratchpad", "tools", "tool_names"],
-                template="""
-You are a helpful travel planning assistant with access to these tools:
+            # Get tool names for the prompt
+            tool_names = ", ".join([tool.name for tool in tools])
+            
+            # Create the EXACT prompt template that create_react_agent expects
+            prompt = PromptTemplate.from_template(
+                """Answer the following questions as best you can. You have access to the following tools:
 
 {tools}
 
-Use this format:
-Thought: [your reasoning]
-Action: [{tool_names}]
-Action Input: [tool input]
-Observation: [tool result]
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Begin!
 
 Question: {input}
-Thought: {agent_scratchpad}
-"""
+Thought:{agent_scratchpad}"""
             )
             
-            print("📝 Creating agent with prompt template...")
+            print(f"📝 Creating agent with {len(tools)} tools...")
+            print(f"📋 Available tools: {tool_names}")
             
-            # Create agent
+            # Create the agent with the prompt
             agent = create_react_agent(
                 llm=llm,
                 tools=tools,
                 prompt=prompt
             )
             
-            # Create executor
             agent_executor = AgentExecutor(
                 agent=agent,
                 tools=tools,
                 verbose=True,
                 max_iterations=5,
-                handle_parsing_errors=True
+                handle_parsing_errors=True,
+                return_intermediate_steps=True
             )
             
             print("✅ Agent setup complete!")
@@ -141,30 +199,41 @@ Thought: {agent_scratchpad}
         print("❌ Missing tools or LLM")
         return None
 
-# Run async setup
-print("=" * 50)
-print("Starting agent setup...")
-print("=" * 50)
+# Global agent instance
+_agent_executor = None
 
-agent_executor = asyncio.run(setup_agent())
-
-# Sync wrapper function
 def run_travel_agent(user_request: str):
     """Run the travel planning agent"""
-    if not agent_executor:
+    global _agent_executor
+    
+    if _agent_executor is None:
+        print("Initializing agent...")
+        _agent_executor = asyncio.run(setup_agent())
+    
+    if not _agent_executor:
         return "Agent not initialized"
     
     try:
         print(f"\n📝 Processing: {user_request}")
         print("-" * 40)
+        
+        # Clear previous tool calls for this request
+        clear_tool_calls()
+        
         start_time = time.time()
-        
-        result = agent_executor.invoke({"input": user_request})
-        
+        result = _agent_executor.invoke({"input": user_request})
         elapsed = time.time() - start_time
-        print(f"\n⏱️  Response time: {elapsed:.2f}s")
-        return result.get("output", str(result))
+        
+        print(f"\n✅ Response time: {elapsed:.2f}s")
+        print(f"🔧 Total tool calls: {len(get_tool_calls())}")
+        
+        # Print tool call summary
+        for i, call in enumerate(get_tool_calls()):
+            print(f"  {i+1}. {call['tool']}")
+        
+        return result.get("output", "No output generated")
         
     except Exception as e:
-        return f"Error: {str(e)}"
-
+        error_msg = f"Error: {str(e)}"
+        print(f"❌ {error_msg}")
+        return error_msg
