@@ -1,0 +1,843 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-support",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -944,
+        0
+      ],
+      "id": "0300bc60-f61e-442d-b0d1-a1d6058ddfeb",
+      "name": "Webhook",
+      "webhookId": "49aca7f2-0b8f-4b03-a392-b2cbcb843615"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $node[\"Intent Classifier\"].json.content }}",
+                    "rightValue": "ORDER_STATUS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "ccb66515-b944-4ee2-b32f-5cd7dd39f4c5"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8557eae8-c8e5-43b6-8f69-45493e4a5f50",
+                    "leftValue": "={{ $node[\"Intent Classifier\"].json.content }}",
+                    "rightValue": "REFUND",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ac021b25-0296-404d-be71-44dff3c53030",
+                    "leftValue": "={{ $node[\"Intent Classifier\"].json.content }}",
+                    "rightValue": "PRODUCT_ISSUE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e1329187-bd5e-4267-8123-8f81c482d1a2",
+                    "leftValue": "={{ $node[\"Intent Classifier\"].json.content }}",
+                    "rightValue": "GENERAL_FAQ",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8f6a35b2-ccb8-4252-b5f2-d01dbaac935b",
+                    "leftValue": "={{ $node[\"Intent Classifier\"].json.content }}",
+                    "rightValue": "ESCALATION",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1a85255c-3f17-42e5-adab-18ac6a90d700",
+                    "leftValue": "={{ $node[\"Flag for Escalation\"].isExecuted ? $node[\"Flag for Escalation\"].json.escalation_flag : \"true\" }}\n",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        -16
+      ],
+      "id": "0a651b12-1a94-4991-adba-4a054b83b9b6",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "= {\n     \"reply\": \"{{ $node[\"Format Response\"].json.reply }}\",\n     \"intent\": \"{{ $node[\"Format Response\"].json.intent }}\",\n     \"timestamp\": \"{{ $node[\"Format Response\"].json.timestamp }}\"\n   }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2096,
+        -32
+      ],
+      "id": "831f35d6-6e8d-4b4b-8e58-0703afe7a149",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list",
+          "cachedResultName": "llama3.2:1b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an order support specialist. Help the customer with their order.\n   \n   Customer message: {{ $node[\"Set Variables\"].json.message }}\n   \n   If they mention an order ID (like ORD123), acknowledge it and provide help.\n   Keep response friendly and under 100 words."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -240
+      ],
+      "id": "1125c669-076d-4a1c-91c6-dfeb7721e098",
+      "name": "Order Support Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "hSMGKEV5RV1Ivd0K",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b3f3b718-c49f-47fe-80db-57fbf67b3d8d",
+              "name": "message",
+              "value": "={{ $json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "ce404510-63a4-45da-b1e3-4889c77e86d4",
+              "name": "user_id",
+              "value": "={{ $json.body.user_id || 'guest' }}",
+              "type": "string"
+            },
+            {
+              "id": "d9070dc7-38df-491b-bb09-ca25cebf3fab",
+              "name": "conversation_id",
+              "value": "={ $now.toISO() }}_{{ $json.body.user_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -736,
+        0
+      ],
+      "id": "499964d4-d70b-4755-ba87-9cb023feb6b7",
+      "name": "Set Variables"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list",
+          "cachedResultName": "llama3.2:1b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a refund specialist. Help the customer with refund requests.\n   \n   Customer message: {{ $node[\"Set Variables\"].json.message }}\n   \n   Policy: 30-day refund window, product must be unused.\n   Be empathetic and guide them through the process.\n   Keep response under 100 words."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -128
+      ],
+      "id": "fb7e0e61-a3b4-4d85-acfd-6be82b648f96",
+      "name": "Refund Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "hSMGKEV5RV1Ivd0K",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list",
+          "cachedResultName": "llama3.2:1b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a technical support specialist. Help with product issues.\n   \n   Customer message: {{ $node[\"Set Variables\"].json.message }}\n   \n   Ask relevant questions, provide troubleshooting steps.\n   Be patient and helpful. Keep response under 100 words."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -16
+      ],
+      "id": "3e697af4-dc46-435a-af42-a3d5ca120baa",
+      "name": "Product Issue Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "hSMGKEV5RV1Ivd0K",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list",
+          "cachedResultName": "llama3.2:1b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a customer service representative answering general questions.\n   \n   Customer message: {{ $node[\"Set Variables\"].json.message }}\n   \n   Common topics: business hours (9-5 EST), shipping (3-7 days), contact info.\n   Be helpful and concise. Keep response under 100 words."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        608,
+        96
+      ],
+      "id": "3c5f24e0-aaa3-474a-9a37-8deae406c5d0",
+      "name": "FAQ Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "hSMGKEV5RV1Ivd0K",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list",
+          "cachedResultName": "llama3.2:1b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You handle escalated issues requiring human support.\n   \n   Customer message: {{ $node[\"Set Variables\"].json.message }}\n   \n   Acknowledge concern, create ticket, assure follow-up within 24 hours.\n   Be empathetic and professional. Keep response under 100 words."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        608,
+        208
+      ],
+      "id": "6b019401-fc3f-4360-bc2d-67f7214726ad",
+      "name": "Escalation Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "hSMGKEV5RV1Ivd0K",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1248,
+        -32
+      ],
+      "id": "64b8f04c-0b92-48cf-a866-e3d3c2749bea",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list",
+          "cachedResultName": "llama3.2:1b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Classify the following customer message into ONE category:\n- ORDER_STATUS\n- REFUND\n- PRODUCT_ISSUE\n- GENERAL_FAQ\n- ESCALATION\n\nMessage: {{ $json.message }}\n\nReply with ONLY the category name, nothing else."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        96
+      ],
+      "id": "4c826ce9-8483-4670-8a5c-8fb82537b56e",
+      "name": "Intent Classifier",
+      "credentials": {
+        "ollamaApi": {
+          "id": "hSMGKEV5RV1Ivd0K",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3334/memory/store",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": {{ $json.user_id.toJsonString() }},\n  \"summary\": {{ (\"User asked about \" + $json.intent + \": \" + $node[\"Set Variables\"].json.message + \". Response: \" + $json.reply).toJsonString() }},\n  \"conversation_id\": {{ $node[\"Set Variables\"].json.conversation_id.toJsonString() }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1712,
+        -32
+      ],
+      "id": "6a0233f4-63b7-4936-bf61-cbd8fd8ca14f",
+      "name": "Store Memory"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "036a3cc6-902c-4b31-b2eb-f8be83e26778",
+              "name": "reply",
+              "value": "={{ $json.response || $json.content || $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "34bfbb0f-5ca7-4a23-856d-dcad2f8a73b9",
+              "name": "intent",
+              "value": "={{ $node[\"Intent Classifier\"].json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "a801e882-b008-4f0c-8628-bf4ef53ee974",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "6200bf67-d902-4fee-8494-4a1884bfe73c",
+              "name": "user_id",
+              "value": "={{ $node[\"Set Variables\"].json.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "33bd5740-b89c-4836-af99-a862d061c7fd",
+              "name": "sentiment",
+              "value": "=sentiment: {{ $node[\"Sentiment Analyzer\"].json.content || \"NEUTRAL\" }}",
+              "type": "string"
+            },
+            {
+              "id": "ee816bc3-d913-49a9-9603-33a2a2020ddf",
+              "name": "ticket_id",
+              "value": "={{ $node[\"Create Support Ticket\"].json.ticket_id || null }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1456,
+        -32
+      ],
+      "id": "0505b891-b234-4f6c-bf2e-1355ccc8da15",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:1b",
+          "mode": "list",
+          "cachedResultName": "llama3.2:1b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Analyze the sentiment of this customer message.\n   Respond with ONLY ONE WORD: POSITIVE, NEGATIVE, or NEUTRAL\n   \n   Message: {{ $node[\"Set Variables\"].json.message }}\n   \n   Classification: {{ $json.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        -176
+      ],
+      "id": "bc039b13-ee42-4b62-be33-9d1125bfa4e5",
+      "name": "Sentiment Analyzer",
+      "credentials": {
+        "ollamaApi": {
+          "id": "hSMGKEV5RV1Ivd0K",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "186c83f7-b278-466d-8ebf-056b1f8bcabf",
+              "leftValue": "={{ $node[\"Sentiment Analyzer\"].json.content }}",
+              "rightValue": "Negative",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -64,
+        0
+      ],
+      "id": "2f1ccd63-5859-48a9-a0ba-8046d9376edd",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7aa7aa1f-bc09-47ba-b7a1-8c917151cabb",
+              "name": "escalation_flag",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "c5e79cb6-43fe-4e3b-b008-92da5ef8e305",
+              "name": "escalation_reason",
+              "value": "negative sentiment detected",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        144,
+        -80
+      ],
+      "id": "62d663bd-7cbd-4414-b436-f62dfff4693d",
+      "name": "Flag for Escalation"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3333/tools/create_support_ticket",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "= {\n     \"user_id\": \"{{ $node[\"Set Variables\"].json.user_id }}\",\n     \"issue_type\": \"{{ $node[\"Intent Classifier\"].json.content }}\",\n     \"description\": \"{{ $node[\"Set Variables\"].json.message }}\",\n     \"priority\": \"{{ $node[\"Sentiment Analyzer\"].json.response == 'Negative' ? 'HIGH' : 'MEDIUM' }}\"\n   }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        960,
+        208
+      ],
+      "id": "3a161f09-afc2-4de1-a475-d03fbec4d225",
+      "name": "Create Support Ticket"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Order Support Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Refund Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Product Issue Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FAQ Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Escalation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Escalation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order Support Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Variables": {
+      "main": [
+        [
+          {
+            "node": "Intent Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refund Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Product Issue Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "FAQ Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Escalation Agent": {
+      "main": [
+        [
+          {
+            "node": "Create Support Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Classifier": {
+      "main": [
+        [
+          {
+            "node": "Sentiment Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Memory": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Store Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentiment Analyzer": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Flag for Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag for Escalation": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Support Ticket": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "3edfdff2-1579-41c2-9feb-228d7a68eac3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "215005860d99f96061e5896d99653e72c84a0e7945c61221aa214819ba89809a"
+  },
+  "id": "1nu4mAlSPeUiKCZp",
+  "tags": []
+}
